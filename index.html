@@ -683,41 +683,41 @@
 
   <div class="nav-section">
     <div class="nav-label">Principal</div>
-    <div class="nav-item active" onclick="setNav(this)">
+    <div class="nav-item active" id="nav-dashboard" onclick="setNav(this, 'dashboard')">
       <span class="nav-icon">◈</span> Dashboard
       <span class="nav-badge" id="nav-badge-dashboard">-</span>
     </div>
-    <div class="nav-item" onclick="setNav(this)">
+    <div class="nav-item" id="nav-miscasos" onclick="setNav(this, 'mis-casos')">
       <span class="nav-icon">◎</span> Mis Casos
       <span class="nav-badge" id="nav-badge-miscasos">-</span>
     </div>
-    <div class="nav-item" onclick="setNav(this)">
+    <div class="nav-item" id="nav-todos" onclick="setNav(this, 'todos')">
       <span class="nav-icon">◇</span> Todos los Casos
     </div>
-    <div class="nav-item" onclick="setNav(this)">
+    <div class="nav-item" id="nav-nuevo" onclick="abrirModalNuevoCaso()">
       <span class="nav-icon">⊕</span> Nuevo Cliente
     </div>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">Herramientas</div>
-    <div class="nav-item" onclick="setNav(this)">
+    <div class="nav-item" id="nav-visa" onclick="setNav(this, 'visa')">
       <span class="nav-icon">▦</span> Visa Bulletin
     </div>
-    <div class="nav-item" onclick="setNav(this)">
-      <span class="nav-icon">◉</span> Documentos
+    <div class="nav-item" id="nav-docs" onclick="setNav(this, 'docs')">
+      <span class="nav-icon">◉</span> Documentos Globales
     </div>
-    <div class="nav-item" onclick="setNav(this)">
+    <div class="nav-item" id="nav-reportes" onclick="setNav(this, 'reportes')">
       <span class="nav-icon">△</span> Reportes
     </div>
   </div>
 
   <div class="sidebar-bottom">
-    <div class="paralegal-chip">
-      <div class="avatar">ML</div>
+    <div class="paralegal-chip" onclick="toggleRole()">
+      <div class="avatar" id="current-user-avatar">ML</div>
       <div>
-        <div class="paralegal-name">Maria L.</div>
-        <div class="paralegal-role">Paralegal</div>
+        <div class="paralegal-name" id="current-user-name">Maria L.</div>
+        <div class="paralegal-role" id="current-user-role">Admin</div>
       </div>
     </div>
   </div>
@@ -726,10 +726,10 @@
 <!-- MAIN -->
 <main class="main">
   <div class="topbar">
-    <div class="page-title">Dashboard</div>
+    <div class="page-title" id="page-main-title">Dashboard (Todos los Casos)</div>
     <div class="topbar-actions">
       <button class="btn btn-ghost">Importar desde eImmigration</button>
-      <button class="btn btn-primary" onclick="openNewCase()">+ Nuevo Caso</button>
+      <button class="btn btn-primary" onclick="abrirModalNuevoCaso()">+ Nuevo Caso</button>
     </div>
   </div>
 
@@ -753,9 +753,9 @@
         <div class="stat-delta" id="stat-progreso-txt">Documentos recibidos vs total</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Aprobados</div>
+        <div class="stat-label">En Inmigración</div>
         <div class="stat-value" id="stat-aprobados">-</div>
-        <div class="stat-delta up" id="stat-aprobados-txt">Histórico total</div>
+        <div class="stat-delta up" id="stat-aprobados-txt">Casos con Receipt Number</div>
       </div>
     </div>
 
@@ -799,11 +799,11 @@
     <div class="cases-table">
       <div class="table-head">
         <span class="th">Cliente</span>
-        <span class="th">Tipo</span>
+        <span class="th">Tipo de Caso</span>
         <span class="th">Estado</span>
-        <span class="th">Progreso</span>
+        <span class="th">Progreso / Estimado VB</span>
         <span class="th">Paralegal</span>
-        <span class="th">Última Nota</span>
+        <span class="th">Última Acc.</span>
         <span class="th"></span>
       </div>
 
@@ -902,194 +902,67 @@
     <!-- DETAIL PANEL (García) -->
     <div class="detail-panel" id="panel-garcia">
       <div class="panel-header">
-        <div>
-          <div class="panel-name">García, Roberto</div>
-          <div class="panel-meta">#2024-0891 · Family F2A · I-485 / I-130 · Abierto 15 Mar 2024</div>
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div class="panel-name" id="caso-nombre">Cargando...</div>
+            <div class="panel-meta" id="caso-meta">#---- · ---</div>
+          </div>
+          <button class="close-btn" onclick="closeCaseDetail()">✕</button>
         </div>
-        <button class="close-btn" onclick="closeCase('garcia')">✕</button>
+        
+        <div style="margin-top:16px; display:flex; flex-direction:column; gap:8px;">
+            <label style="font-size:11px; font-family:'DM Mono',monospace; color:var(--muted);">RECEIPT NUMBER (USCIS)</label>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="panel-receipt" style="background:var(--surface2); border:1px solid var(--border); padding:8px; border-radius:4px; color:var(--text); flex:1; font-family:'DM Mono';" placeholder="Caso No Enviado. / Ej. IOE..." />
+                <button class="btn btn-ghost" onclick="guardarReceiptNumber()" style="padding:0 16px; font-size:12px;">Guardar</button>
+            </div>
+        </div>
       </div>
 
       <div class="panel-tabs">
-        <div class="tab active" onclick="switchTab(this,'garcia','docs')">📄 Documentos</div>
-        <div class="tab" onclick="switchTab(this,'garcia','forms')">📋 Formularios</div>
-        <div class="tab" onclick="switchTab(this,'garcia','notes')">💬 Notas</div>
-        <div class="tab" onclick="switchTab(this,'garcia','timeline')">⏱ Bulletin / Estimado</div>
+        <div class="tab active" onclick="switchTab(this,'panel','docs')">📄 Checklist</div>
+        <div class="tab" onclick="switchTab(this,'panel','forms')">📋 Formularios</div>
+        <div class="tab" onclick="switchTab(this,'panel','notes')">💬 Notas Históricas</div>
+        <div class="tab" id="tab-timeline-header" onclick="switchTab(this,'panel','timeline')">⏱ Timeline</div>
       </div>
 
       <div class="panel-body">
 
         <!-- DOCS TAB -->
         <div class="tab-content active" id="garcia-docs">
-          <div class="doc-section-title">Peticionario (Cónyuge Ciudadano)</div>
-
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox checked">✓</div>
-            <div class="doc-name checked">Pasaporte vigente (copia)</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();">
-              <span style="font-size:14px;color:var(--accent)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--success)">✓ Recibido</span>
-          </div>
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox checked">✓</div>
-            <div class="doc-name checked">Acta de matrimonio (apostillada)</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();">
-              <span style="font-size:14px;color:var(--accent)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--success)">✓ Recibido</span>
-          </div>
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox checked">✓</div>
-            <div class="doc-name checked">Prueba de ciudadanía (US Passport)</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();">
-              <span style="font-size:14px;color:var(--accent)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--success)">✓ Recibido</span>
-          </div>
-
-          <div class="doc-section-title">Beneficiario (Roberto García)</div>
-
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox checked">✓</div>
-            <div class="doc-name checked">Pasaporte vigente</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();">
-              <span style="font-size:14px;color:var(--accent)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--success)">✓ Recibido</span>
-          </div>
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox checked">✓</div>
-            <div class="doc-name checked">Acta de nacimiento (apostillada)</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();">
-              <span style="font-size:14px;color:var(--accent)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--success)">✓ Recibido</span>
-          </div>
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox"></div>
-            <div class="doc-name">Foto pasaporte (2x2)</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();" style="opacity:0.3" title="Vincular a Dropbox">
-              <span style="font-size:14px;color:var(--muted)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--muted)">⏳ Pendiente</span>
-          </div>
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox"></div>
-            <div class="doc-name">Examen médico I-693 (sellado)</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();" style="opacity:0.3" title="Vincular a Dropbox">
-              <span style="font-size:14px;color:var(--muted)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--muted)">⏳ Pendiente</span>
-          </div>
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox"></div>
-            <div class="doc-name">Police clearance (país de origen)</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();" style="opacity:0.3" title="Vincular a Dropbox">
-              <span style="font-size:14px;color:var(--muted)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--danger)">✕ Urgente</span>
-          </div>
-          <div class="doc-item" onclick="toggleDoc(this)">
-            <div class="doc-checkbox"></div>
-            <div class="doc-name">Affidavit of Support (I-864)</div>
-            <a href="#" class="dropbox-link" onclick="event.stopPropagation();" style="opacity:0.3" title="Vincular a Dropbox">
-              <span style="font-size:14px;color:var(--muted)">⎘</span>
-            </a>
-            <span class="doc-status" style="color:var(--muted)">⏳ Pendiente</span>
-          </div>
-
-          <div style="margin-top:14px">
-            <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px">+ Agregar documento</button>
-          </div>
+          <!-- Dinámico -->
+          <div style="text-align:center; padding:20px; color:var(--muted); font-size:13px;">Cargando checklist...</div>
         </div>
 
         <!-- FORMS TAB -->
-        <div class="tab-content" id="garcia-forms">
-          <div class="form-item">
-            <div class="form-header">
-              <div class="form-name">I-130 — Petition for Alien Relative</div>
-              <div class="form-pct">100%</div>
-            </div>
-            <div class="form-bar"><div class="form-fill" style="width:100%"></div></div>
-            <div class="form-note">✓ Completado y enviado — Receipt #EAC2400891234</div>
+        <div class="tab-content" id="panel-forms">
+          <div style="margin-bottom:16px; font-size:13px; color:var(--muted);">
+            Marque los formularios eImmigration completados y listos para el paquete final.
           </div>
-          <div class="form-item">
-            <div class="form-header">
-              <div class="form-name">I-485 — Application for Permanent Residence</div>
-              <div class="form-pct">70%</div>
-            </div>
-            <div class="form-bar"><div class="form-fill" style="width:70%"></div></div>
-            <div class="form-note">Faltan: Parte 8 (Additional Information), firma cliente</div>
-          </div>
-          <div class="form-item">
-            <div class="form-header">
-              <div class="form-name">I-864 — Affidavit of Support</div>
-              <div class="form-pct">30%</div>
-            </div>
-            <div class="form-bar"><div class="form-fill" style="width:30%"></div></div>
-            <div class="form-note">Esperando tax returns del peticionario (2022, 2023)</div>
-          </div>
-          <div class="form-item">
-            <div class="form-header">
-              <div class="form-name">I-131 — Advance Parole (opcional)</div>
-              <div class="form-pct">0%</div>
-            </div>
-            <div class="form-bar"><div class="form-fill" style="width:0%"></div></div>
-            <div class="form-note">Pendiente — cliente confirmó que viajará, proceder</div>
+          <div id="forms-container">
+            <!-- Dinámico -->
+            <div style="text-align:center; padding:20px; color:var(--muted); font-size:13px;">Asignando formularios...</div>
           </div>
         </div>
 
         <!-- NOTES TAB -->
         <div class="tab-content" id="garcia-notes">
-          <div class="note-item important">
-            <div class="note-meta">Maria L. · Hoy 10:32am · ⚠ Importante</div>
-            <div class="note-text">Cliente llamó — tiene el police clearance listo pero necesita apostilla. Le expliqué el proceso. Confirmó que lo llevará el viernes.</div>
-          </div>
-          <div class="note-item">
-            <div class="note-meta">Maria L. · 3 días · Nota de consulta</div>
-            <div class="note-text">Revisamos el I-485 juntos. Tiene dudas sobre la Parte 8, preguntas de historial. Agendamos otra sesión para el jueves a las 3pm.</div>
-          </div>
-          <div class="note-item">
-            <div class="note-meta">Maria L. · 1 semana · Actualización</div>
-            <div class="note-text">USCIS envió notice de biometrics para el 28 de enero. Confirmado con cliente, tiene transporte.</div>
+          <div id="garcia-notes-list" style="margin-bottom: 20px;">
+            <!-- Dinámico -->
+            <div style="text-align:center; padding:20px; color:var(--muted); font-size:13px;">Cargando notas...</div>
           </div>
 
-          <div class="note-input-area">
+          <div class="note-input-area" id="garcia-notes-input" data-important="false">
             <textarea class="note-textarea" placeholder="Agregar nota..."></textarea>
             <div style="display:flex;gap:8px;margin-top:8px">
-              <button class="btn btn-primary" style="font-size:12px;padding:7px 14px">Guardar nota</button>
-              <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px">⚠ Marcar importante</button>
+              <button class="btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="guardarNota(this)">Guardar nota</button>
+              <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="toggleNotaImportante(this)">⚠ Marcar importante</button>
             </div>
           </div>
         </div>
 
         <!-- TIMELINE TAB -->
         <div class="tab-content" id="garcia-timeline">
-          <div class="bulletin-case">
-            <div class="bulletin-case-title">Categoría: F2A — Cónyuge de Residente Permanente</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:14px">
-              <div>
-                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Priority Date</div>
-                <div style="font-size:16px;font-family:'DM Mono',monospace;color:var(--accent)">15 MAR 2022</div>
-              </div>
-              <div>
-                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Bulletin Actual</div>
-                <div style="font-size:16px;font-family:'DM Mono',monospace;color:var(--accent2)">01 JUL 2022</div>
-              </div>
-              <div>
-                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Estimado disponible</div>
-                <div style="font-size:16px;font-family:'DM Mono',monospace;color:var(--accent3)">~4 meses</div>
-              </div>
-            </div>
-            <div class="progress-bar" style="height:8px;border-radius:4px">
-              <div class="progress-fill" style="width:78%;background:var(--accent)"></div>
-            </div>
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">La priority date está a <strong style="color:var(--accent)">~3.5 meses</strong> de ser corriente. Avance promedio: 2-3 semanas por mes.</div>
-          </div>
-
-          <div class="timeline" style="margin-top:6px">
-            <div class="tl-item">
-              <div class="tl-dot done"></div>
               <div class="tl-label">I-130 Aprobado</div>
               <div class="tl-date">22 Jun 2024</div>
             </div>
@@ -1124,6 +997,54 @@
       </div>
     </div>
 
+  <!-- MODAL NUEVO CASO -->
+  <div id="modal-nuevo-caso" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:999; align-items:center; justify-content:center;">
+    <div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; width:450px; padding:24px;">
+      <div style="display:flex; justify-content:space-between; margin-bottom:20px;">
+        <h2 style="font-family:'DM Serif Display',serif; font-size:22px; color:var(--text);">Nuevo Cliente</h2>
+        <button onclick="cerrarModalNuevoCaso()" style="background:none; border:none; color:var(--muted); font-size:18px; cursor:pointer;">✕</button>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <label style="display:block; font-size:11px; font-family:'DM Mono',monospace; color:var(--muted); margin-bottom:6px;">NOMBRE COMPLETO</label>
+        <input type="text" id="nc-nombre" style="width:100%; background:var(--surface2); border:1px solid var(--border); padding:10px 12px; border-radius:6px; color:var(--text); font-family:'DM Sans';" placeholder="Ej. Gómez, Juan Carlos" />
+      </div>
+
+      <div style="margin-bottom:16px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+        <div>
+          <label style="display:block; font-size:11px; font-family:'DM Mono',monospace; color:var(--muted); margin-bottom:6px;">TIPO DE TRÁMITE</label>
+          <select id="nc-tipo" style="width:100%; background:var(--surface2); border:1px solid var(--border); padding:10px 12px; border-radius:6px; color:var(--text); font-family:'DM Sans';">
+            <option value="F2A">F2A (Family-based)</option>
+            <option value="DACA">DACA</option>
+            <option value="EB-2">EB-2 (Employment)</option>
+            <option value="TPS">TPS</option>
+            <option value="I-130">I-130 Solo</option>
+            <option value="I-485">I-485 Solo</option>
+            <option value="N-400">N-400 (Citizenship)</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block; font-size:11px; font-family:'DM Mono',monospace; color:var(--muted); margin-bottom:6px;">PARALEGAL</label>
+          <select id="nc-paralegal" style="width:100%; background:var(--surface2); border:1px solid var(--border); padding:10px 12px; border-radius:6px; color:var(--text); font-family:'DM Sans';">
+            <option value="ML">ML - Maria L.</option>
+            <option value="RV">RV - Roberto V.</option>
+            <option value="JP">JP - Juan P.</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom:24px;">
+        <label style="display:block; font-size:11px; font-family:'DM Mono',monospace; color:var(--muted); margin-bottom:6px;">PRIORITY DATE (Opcional por ahora)</label>
+        <input type="date" id="nc-priority" style="width:100%; background:var(--surface2); border:1px solid var(--border); padding:10px 12px; border-radius:6px; color:var(--text); font-family:'DM Sans'; color-scheme: dark;" />
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:12px;">
+        <button class="btn btn-ghost" onclick="cerrarModalNuevoCaso()">Cancelar</button>
+        <button class="btn btn-primary" id="btn-crear-caso" onclick="crearCasoSubmit()">Crear Caso y Plantilla</button>
+      </div>
+    </div>
+  </div>
+
   </div>
 </main>
 
@@ -1131,41 +1052,7 @@
 <script type="module" src="/app.js"></script>
 
 <script>
-  // Funciones mínimas UI puras no migradas a app.js
-  function setNav(el) {
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    el.classList.add('active');
-  }
-
-  function openCase(id) {
-    document.querySelectorAll('.detail-panel').forEach(p => p.classList.remove('open'));
-    document.querySelectorAll('.case-row').forEach(r => r.classList.remove('selected'));
-    const panel = document.getElementById('panel-' + id);
-    if (panel) {
-      panel.classList.add('open');
-      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  }
-
-  function closeCase(id) {
-    const p = document.getElementById('panel-' + id);
-    if(p) p.classList.remove('open');
-  }
-
-  function switchTab(el, caseId, tab) {
-    const panel = document.getElementById('panel-' + caseId);
-    if(!panel) return;
-    panel.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    panel.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-    el.classList.add('active');
-    
-    const target = document.getElementById(caseId + '-' + tab);
-    if(target) target.classList.add('active');
-  }
-
-  function openNewCase() {
-    alert('Función de nuevo caso — se autollenaría usando las plantillas de Supabase');
-  }
+  // Funciones mínimas delegadas a app.js
 </script>
 </body>
 </html>

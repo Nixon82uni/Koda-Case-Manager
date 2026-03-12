@@ -11,6 +11,12 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 let supabase;
 
+// ==========================================
+// ESTADO DE LA SESIÓN LOCAL (Mock Login)
+// ==========================================
+let currentUserRole = 'Admin'; 
+let currentUserId = 'ML'; // Initials of the paralegal/admin
+
 // Inicialización
 document.addEventListener('DOMContentLoaded', async () => {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -21,7 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log("Supabase inicializado correctamente desde variables de entorno.");
-        await loadDashboardCases();
+        
+        applyRoleRestrictions();
+        await loadDashboardCases('all');
         await updateGlobalStats(); // Cargar estadísticas de arriba
     } catch(err) {
         console.error("Fallo al inicializar Supabase. Revisa tus credenciales.", err);
@@ -31,14 +39,57 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ==========================================
 // 1. CARGA DE CASOS EN DASHBOARD
 // ==========================================
-async function loadDashboardCases(filter = 'all') {
+
+function applyRoleRestrictions() {
+    const navTodos = document.getElementById('nav-todos');
+    const avatar = document.getElementById('current-user-avatar');
+    const name = document.getElementById('current-user-name');
+    const roleTxt = document.getElementById('current-user-role');
+    
+    if(currentUserRole === 'Paralegal') {
+        if(navTodos) navTodos.style.display = 'none'; // Paralegals don't see all cases
+        roleTxt.textContent = 'Paralegal';
+        // Go default to 'mis-casos'
+        window.setNav(document.getElementById('nav-miscasos'), 'mis-casos');
+    } else {
+        if(navTodos) navTodos.style.display = 'flex';
+        roleTxt.textContent = 'Admin';
+    }
+    avatar.textContent = currentUserId;
+}
+
+// Function triggered by clicking the profile in sidebar (para dev/demo)
+window.toggleRole = function() {
+    currentUserRole = currentUserRole === 'Admin' ? 'Paralegal' : 'Admin';
+    applyRoleRestrictions();
+    // Default redirect on role switch
+    if(currentUserRole === 'Admin') {
+        window.setNav(document.getElementById('nav-dashboard'), 'dashboard');
+    } else {
+        window.setNav(document.getElementById('nav-miscasos'), 'mis-casos');
+    }
+}
+
+// Global filter state
+let currentCategoryFilter = 'all'; 
+let currentNavView = 'dashboard'; // 'dashboard' (todos) o 'mis-casos'
+
+async function loadDashboardCases(category = 'all', skipStats = false) {
     if(!supabase) return;
+    
+    currentCategoryFilter = category;
 
     try {
-        let query = supabase.from('casos').select('*').order('fecha_apertura', { ascending: false });
+        let query = supabase.from('casos').select('*').order('created_at', { ascending: false });
         
-        if(filter !== 'all') {
-            query = query.eq('categoria_tramite', filter);
+        // Filter by Tab (Nav View)
+        if(currentNavView === 'mis-casos') {
+            query = query.eq('paralegal_asignado', currentUserId);
+        }
+        
+        // Filter by Category Button
+        if(category !== 'all') {
+            query = query.eq('categoria_tramite', category);
         }
 
         const { data: casos, error } = await query;
@@ -46,6 +97,15 @@ async function loadDashboardCases(filter = 'all') {
         if (error) throw error;
 
         renderCasesTable(casos);
+        
+        // Cambiar titulo
+        const title = document.getElementById('page-main-title');
+        if(title) {
+            if(currentNavView === 'mis-casos') title.textContent = 'Mis Casos Asignados';
+            else title.textContent = 'Dashboard (Todos los Casos)';
+        }
+        
+        if(!skipStats) await updateGlobalStats();
     } catch (err) {
         console.error("Error cargando casos:", err);
     }
@@ -87,13 +147,13 @@ function renderCasesTable(casos) {
             <div><span class="case-type-badge ${badgeClass}">${caso.categoria_tramite || caso.tipo_tramite}</span></div>
             <div><span class="status-dot"><span class="dot ${dotClass}"></span>${caso.estado}</span></div>
             <div class="progress-cell">
-                <div class="prog-label">Cargando...</div>
+                <div class="prog-label">Cargando docs...</div>
                 <div class="progress-bar"><div class="progress-fill" style="width:0%;background:var(--border)"></div></div>
             </div>
             <div>
-                <div class="paralegal-avatar-sm">${caso.paralegal_asignado ? caso.paralegal_asignado.substring(0,2).toUpperCase() : 'NA'}</div>
+                <div class="paralegal-avatar-sm">${caso.paralegal_asignado ? caso.paralegal_asignado.toUpperCase() : 'NA'}</div>
             </div>
-            <div style="font-size:11.5px;color:var(--muted)">Reciente</div>
+            <div style="font-size:11.5px;color:var(--muted)">${new Date(caso.created_at).toLocaleDateString()}</div>
             <div><button class="action-btn" onclick="event.stopPropagation(); abiertoPorBoton('${caso.id}')">Ver →</button></div>
         </div>
         `;
@@ -105,7 +165,18 @@ function renderCasesTable(casos) {
     casos.forEach(c => updateCaseProgressRow(c.id));
 }
 
-// Filtro interactivo
+window.setNav = function(el, view) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if(el) el.classList.add('active');
+    
+    // Si la vista es dashboard o mis-casos o todos, navegamos
+    if(view === 'dashboard' || view === 'todos' || view === 'mis-casos') {
+        currentNavView = view === 'todos' ? 'dashboard' : view;
+        loadDashboardCases(currentCategoryFilter, true); 
+    }
+}
+
+// Filtro interactivo de Pastillas (Categorias)
 window.filterCases = function(el, type) {
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
@@ -118,7 +189,7 @@ window.filterCases = function(el, type) {
 
     if(!supabase) return;
     
-    loadDashboardCases(type === 'all' ? 'all' : bdType);
+    loadDashboardCases(bdType, true);
 }
 
 // ==========================================
@@ -128,29 +199,47 @@ async function updateGlobalStats() {
     if(!supabase) return;
     
     try {
-        // 1. Casos Activos y Aprobados (Asumimos "Completado" o "Cerrado" como aprobado, o todos los no-cerrados como activos)
-        // Para este prototipo, contaremos todos como activos, excepto los que tengan un estado específico.
-        const { data: todosLosCasos, error: errCasos } = await supabase.from('casos').select('id, estado');
+        // 1. Casos Activos y En Inmigración (Aprobados)
+        // Casos activos son los que no tienen receipt number
+        const { data: todosLosCasos, error: errCasos } = await supabase.from('casos').select('id, receipt_number, paralegal_asignado');
         if(errCasos) throw errCasos;
         
-        const casosActivos = todosLosCasos.filter(c => c.estado !== 'Cerrado' && c.estado !== 'Completado');
-        const casosAprobados = todosLosCasos.filter(c => c.estado === 'Completado' || c.estado === 'Aprobado');
+        let targetCasos = todosLosCasos;
+        
+        // Si es paralegal, sus badge stats son relativos a él
+        if(currentUserRole === 'Paralegal') {
+            targetCasos = todosLosCasos.filter(c => c.paralegal_asignado === currentUserId);
+        }
+        
+        const casosActivos = targetCasos.filter(c => !c.receipt_number || c.receipt_number.trim() === '');
+        const casosEnInmigracion = targetCasos.filter(c => c.receipt_number && c.receipt_number.trim() !== '');
         
         const activelCount = casosActivos.length;
-        const approvedCount = casosAprobados.length;
+        const approvedCount = casosEnInmigracion.length;
+        
+        // Solo cogemos documentos de los casos target
+        const targetCasoIds = targetCasos.map(c => c.id);
         
         // 2. Documentos Pendientes y Urgentes
-        const { data: todosLosDocs, error: errDocs } = await supabase.from('documentos_koda').select('estado');
-        if(errDocs) throw errDocs;
+        let docsPendientes = [];
+        let docsUrgentes = [];
+        let docsRecibidos = [];
+        let todosLosDocsLength = 0;
         
-        const docsPendientes = todosLosDocs.filter(d => d.estado !== 'Recibido');
-        const docsUrgentes = docsPendientes.filter(d => d.estado === 'Urgente');
-        const docsRecibidos = todosLosDocs.filter(d => d.estado === 'Recibido');
+        if(targetCasoIds.length > 0) {
+            const { data: todosLosDocs, error: errDocs } = await supabase.from('documentos_koda').select('estado').in('caso_id', targetCasoIds);
+            if(errDocs) throw errDocs;
+            
+            docsPendientes = todosLosDocs.filter(d => d.estado !== 'Recibido');
+            docsUrgentes = docsPendientes.filter(d => d.estado === 'Urgente');
+            docsRecibidos = todosLosDocs.filter(d => d.estado === 'Recibido');
+            todosLosDocsLength = todosLosDocs.length;
+        }
         
         // 3. Progreso Global
         let pctGlobal = 0;
-        if(todosLosDocs.length > 0) {
-            pctGlobal = Math.round((docsRecibidos.length / todosLosDocs.length) * 100);
+        if(todosLosDocsLength > 0) {
+            pctGlobal = Math.round((docsRecibidos.length / todosLosDocsLength) * 100);
         }
         
         // DOM Updates
@@ -159,9 +248,11 @@ async function updateGlobalStats() {
         const badgeDashboard = document.getElementById('nav-badge-dashboard');
         const badgeMisCasos = document.getElementById('nav-badge-miscasos');
         
-        if(badgeDashboard) badgeDashboard.textContent = todosLosCasos.length.toString();
-        // Asumiendo que "Mis Casos" es una fracción simulada si no hay paralegal en sesión (simulamos 30% asignados)
-        if(badgeMisCasos) badgeMisCasos.textContent = Math.max(1, Math.floor(todosLosCasos.length * 0.3)).toString();
+        const adminTotal = todosLosCasos.length;
+        const misTotal = todosLosCasos.filter(c => c.paralegal_asignado === currentUserId).length;
+        
+        if(badgeDashboard) badgeDashboard.textContent = adminTotal.toString();
+        if(badgeMisCasos) badgeMisCasos.textContent = misTotal.toString();
         
         // Top Stats
         const statCasos = document.getElementById('stat-casos-activos');
@@ -188,7 +279,7 @@ async function updateGlobalStats() {
         }
         
         if(statProg) statProg.textContent = `${pctGlobal}%`;
-        if(statProgDelta) statProgDelta.textContent = `De ${todosLosDocs.length} documentos totales`;
+        if(statProgDelta) statProgDelta.textContent = `De ${todosLosDocsLength} doc requeridos`;
         
         if(statApr) statApr.textContent = approvedCount.toString();
         
@@ -197,43 +288,139 @@ async function updateGlobalStats() {
     }
 }
 
-// ==========================================
-// 2. DETALLE DE CASO
-// ==========================================
-
 let currentActiveCaseId = null;
 
+// The function called from HTML button
+window.abiertoPorBoton = function(casoId) {
+    if(!supabase) {
+        alert("Modo Mock: Conecta Supabase primero.");
+        return;
+    }
+    openCaseDetails(casoId);
+}
+
 window.openCaseDetails = async function(casoId) {
-    if(!supabase) return openCase(casoId); // Fallback al mock original
-    
+    if(!supabase) return;
     currentActiveCaseId = casoId;
     
-    // Cerrar paneles abiertos o limpiar UI anterior (el HTML actual usa IDs fijos, lo adaptaremos)
-    // Para simplificar la mezcla con el HTML existente, clonaremos/usaremos un panel maestro.
+    const panel = document.getElementById('panel-garcia');
+    if(!panel) return;
+    
+    // Reset tabs
+    document.querySelectorAll('.panel-tabs .tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelector('.panel-tabs .tab:nth-child(1)').classList.add('active');
+    document.getElementById('garcia-docs').classList.add('active');
+    
+    panel.classList.add('open');
     
     try {
-        // 1. Obtener datos del caso
-        const { data: caso } = await supabase.from('casos').select('*').eq('id', casoId).single();
-        if(!caso) return;
+        // Fetch Case details
+        const { data: caso, error } = await supabase.from('casos').select('*').eq('id', casoId).single();
+        if(error) throw error;
         
-        // 2. Crear o actualizar panel en el DOM
-        renderCasePanel(caso);
+        // Update Header
+        document.getElementById('caso-nombre').textContent = caso.nombre_cliente;
+        document.getElementById('caso-meta').textContent = `#${caso.numero_caso} · ${caso.categoria_tramite || ''} · Abierto ${new Date(caso.created_at).toLocaleDateString()}`;
+        document.getElementById('panel-receipt').value = caso.receipt_number || '';
         
-        // 3. Cargar sub-datos
+        // Cargar Tabs
         await loadCaseDocuments(casoId);
+        await loadCaseForms(caso.tipo_tramite);
         await loadCaseNotes(casoId);
         await calculateTimeline(caso);
         
-        // 4. Mostrar panel
-        openCase(`dynamic-${casoId}`);
-        
     } catch(err) {
-        console.error("Error abriendo caso:", err);
+        console.error("Error abriendo detalle:", err);
     }
 }
 
-window.abiertoPorBoton = function(casoId) {
-    openCaseDetails(casoId);
+window.closeCaseDetail = function() {
+    const panel = document.getElementById('panel-garcia');
+    if(panel) panel.classList.remove('open');
+    currentActiveCaseId = null;
+    updateGlobalStats();
+}
+
+window.guardarReceiptNumber = async function() {
+    if(!currentActiveCaseId || !supabase) return;
+    
+    const input = document.getElementById('panel-receipt');
+    const val = input.value.trim();
+    
+    try {
+        const { error } = await supabase.from('casos').update({ receipt_number: val }).eq('id', currentActiveCaseId);
+        if(error) throw error;
+        
+        alert("Receipt Number guardado.");
+        loadDashboardCases(currentCategoryFilter, true); // Actualizar tablero detras
+    } catch(err) {
+        console.error(err);
+        alert("Error guardando receipt number");
+    }
+}
+
+// ==========================================
+// CREADOR DE CASOS (MODAL)
+// ==========================================
+window.abrirModalNuevoCaso = function() {
+    document.getElementById('modal-nuevo-caso').style.display = 'flex';
+}
+
+window.cerrarModalNuevoCaso = function() {
+    document.getElementById('modal-nuevo-caso').style.display = 'none';
+    document.getElementById('nc-nombre').value = '';
+    document.getElementById('nc-priority').value = '';
+}
+
+window.crearCasoSubmit = async function() {
+    if(!supabase) return alert("Supabase no configurado");
+    
+    const nombre = document.getElementById('nc-nombre').value.trim();
+    const tipo = document.getElementById('nc-tipo').value;
+    const paralegal = document.getElementById('nc-paralegal').value;
+    const priority = document.getElementById('nc-priority').value;
+    const btn = document.getElementById('btn-crear-caso');
+    
+    if(!nombre) return alert("El nombre es requerido");
+    
+    // Auto generar un número de caso KODA-202X
+    const year = new Date().getFullYear();
+    const randomHex = Math.floor(Math.random()*16777215).toString(16).toUpperCase().padStart(4, '0');
+    const numCaso = `KODA-${year}-${randomHex}`;
+    
+    btn.disabled = true;
+    btn.textContent = 'Creando...';
+    
+    try {
+        const { data: newCase, error } = await supabase.from('casos').insert({
+            nombre_cliente: nombre,
+            numero_caso: numCaso,
+            tipo_tramite: tipo,
+            categoria_tramite: (tipo==='F2A'||tipo==='I-130'||tipo==='I-485')?'Family' : (tipo==='EB-2'?'Employment':tipo),
+            estado: 'Nuevo',
+            priority_date: priority || null,
+            paralegal_asignado: paralegal
+        }).select('id').single();
+        
+        if(error) throw error;
+        
+        // Autollenar la plantilla de documentos
+        await autoFillDocuments(newCase.id, tipo);
+        
+        cerrarModalNuevoCaso();
+        await loadDashboardCases(currentCategoryFilter);
+        
+        // Abrir caso nuevo
+        openCaseDetails(newCase.id);
+        
+    } catch(err) {
+        console.error("Error al crear caso", err);
+        alert("Ocurrió un error al crear el caso");
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Crear Caso y Plantilla';
+    }
 }
 
 // ==========================================
@@ -265,30 +452,34 @@ async function autoFillDocuments(casoId, tipoTramite) {
 async function loadCaseDocuments(casoId) {
     const { data: docs } = await supabase.from('documentos_koda').select('*').eq('caso_id', casoId).order('orden', {ascending: true});
     
-    const container = document.getElementById(`dynamic-${casoId}-docs`);
+    const container = document.getElementById(`garcia-docs`);
     if(!container) return;
     
+    container.innerHTML = `<div class="doc-section-title">Checklist de Documentos Requeridos</div>`;
+    
     if(!docs || docs.length === 0) {
-        container.innerHTML = `<div class="doc-item"><div class="doc-name">No hay documentos requeridos.</div></div>`;
+        container.innerHTML += `<div class="doc-item"><div class="doc-name">No hay documentos requeridos.</div></div>`;
         return;
     }
     
     let html = '';
     docs.forEach(doc => {
         const isRecibido = doc.estado === 'Recibido';
-        const isUrgente = doc.estado === 'Urgente';
+        const isTraduccion = doc.estado === 'Necesita Traducción';
+        const isUrgente = doc.estado === 'Urgente'; // Legacy
         
         let statusColor = 'var(--muted)';
         let statusText = '⏳ Pendiente';
         
         if(isRecibido) { statusColor = 'var(--success)'; statusText = '✓ Recibido'; }
-        if(isUrgente) { statusColor = 'var(--danger)'; statusText = '✕ Urgente'; }
+        else if(isTraduccion) { statusColor = 'var(--accent3)'; statusText = '⚖ Requiere Traducción'; }
+        else if(isUrgente) { statusColor = 'var(--danger)'; statusText = '✕ Urgente'; }
         
         const dropboxIconStyle = doc.link_dropbox ? 'opacity:1;color:var(--accent)' : 'opacity:0.3;color:var(--muted)';
         const dropboxHref = doc.link_dropbox ? doc.link_dropbox : '#';
         
         html += `
-        <div class="doc-item" onclick="toggleDocAction('${doc.id}', ${!isRecibido}, '${casoId}')">
+        <div class="doc-item" onclick="toggleDocAction('${doc.id}', '${doc.estado}', '${casoId}')">
             <div class="doc-checkbox ${isRecibido ? 'checked' : ''}">${isRecibido ? '✓' : ''}</div>
             <div class="doc-name ${isRecibido ? 'checked' : ''}">${doc.nombre_documento}</div>
             <a href="${dropboxHref}" target="${doc.link_dropbox ? '_blank' : '_self'}" class="dropbox-link" onclick="event.stopPropagation(); promptDropboxLink('${doc.id}', '${doc.link_dropbox || ''}', '${casoId}')" title="Vincular/Abrir Dropbox" style="${dropboxIconStyle}">
@@ -299,11 +490,14 @@ async function loadCaseDocuments(casoId) {
         `;
     });
     
-    container.innerHTML = html;
+    container.innerHTML += html;
 }
 
-window.toggleDocAction = async function(docId, setRecibido, casoId) {
-    const nuevoEstado = setRecibido ? 'Recibido' : 'Pendiente';
+window.toggleDocAction = async function(docId, estadoActual, casoId) {
+    let nuevoEstado = 'Pendiente';
+    if(estadoActual === 'Pendiente' || estadoActual === 'Urgente') nuevoEstado = 'Necesita Traducción';
+    else if(estadoActual === 'Necesita Traducción') nuevoEstado = 'Recibido';
+    else if(estadoActual === 'Recibido') nuevoEstado = 'Pendiente';
     
     try {
         await supabase.from('documentos_koda').update({ estado: nuevoEstado }).eq('id', docId);
@@ -319,6 +513,50 @@ window.toggleDocAction = async function(docId, setRecibido, casoId) {
         
     } catch(e) {
         console.error("Error toggle doc", e);
+    }
+}
+
+// ==========================================
+// FORMULARIOS (Simples / Desconectados)
+// ==========================================
+async function loadCaseForms(tipoTramite) {
+    // Simula una lógica donde dependiendo del tipo de trámite, sugiere qué formularios llenar en eImmigration
+    const container = document.getElementById('forms-container');
+    if(!container) return;
+    
+    let formsToRender = [];
+    
+    if(tipoTramite === 'F2A' || tipoTramite === 'I-130') formsToRender = ['I-130 - Petition for Alien Relative', 'I-130A - Supplemental Info'];
+    if(tipoTramite === 'I-485' || tipoTramite === 'F2A') formsToRender.push('I-485 - App for Permanent Residence', 'I-864 - Affidavit of Support', 'I-765 - Employment Auth (Opcional)', 'I-131 - Advance Parole (Opcional)');
+    if(tipoTramite === 'N-400') formsToRender = ['N-400 - Application for Naturalization'];
+    if(tipoTramite === 'DACA') formsToRender = ['I-821D - Consideration of DACA', 'I-765 - Employment Auth'];
+    if(tipoTramite === 'TPS') formsToRender = ['I-821 - Application for TPS', 'I-765 - Employment Auth'];
+    
+    if(formsToRender.length === 0) formsToRender = ['Formulario Principal del Trámite'];
+    
+    let html = '';
+    formsToRender.forEach(f => {
+        html += `
+        <div class="doc-item" onclick="toggleSimpleForm(this)">
+            <div class="doc-checkbox"></div>
+            <div class="doc-name">${f}</div>
+        </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+window.toggleSimpleForm = function(el) {
+    // Solo visual (DOM) para asistir al paralegal
+    const box = el.querySelector('.doc-checkbox');
+    const name = el.querySelector('.doc-name');
+    
+    if(box.classList.contains('checked')){
+        box.classList.remove('checked'); box.textContent = '';
+        name.classList.remove('checked');
+    } else {
+        box.classList.add('checked'); box.textContent = '✓';
+        name.classList.add('checked');
     }
 }
 
@@ -370,11 +608,11 @@ async function updateCaseProgressRow(casoId) {
 async function loadCaseNotes(casoId) {
     const { data: notas } = await supabase.from('notas_koda').select('*').eq('caso_id', casoId).order('created_at', {ascending: false});
     
-    const container = document.getElementById(`dynamic-${casoId}-notes-list`);
+    const container = document.getElementById(`garcia-notes-list`);
     if(!container) return;
     
     if(!notas || notas.length === 0) {
-        container.innerHTML = `<div class="note-item"><div class="note-text" style="color:var(--muted)">No hay notas aún.</div></div>`;
+        container.innerHTML = `<div class="note-item"><div class="note-text" style="color:var(--muted)">No hay notas aún. Asegúrate de enfocar las notas en el requerimiento de documentos.</div></div>`;
         return;
     }
     
@@ -394,8 +632,11 @@ async function loadCaseNotes(casoId) {
     container.innerHTML = html;
 }
 
-window.guardarNota = async function(casoId, btnElement) {
-    const container = document.getElementById(`dynamic-${casoId}-notes-input`);
+window.guardarNota = async function(btnElement) {
+    if(!currentActiveCaseId) return;
+    const casoId = currentActiveCaseId;
+    
+    const container = document.getElementById(`garcia-notes-input`);
     const isImportant = container.dataset.important === 'true';
     const textarea = container.querySelector('textarea');
     const contenido = textarea.value.trim();
@@ -426,8 +667,8 @@ window.guardarNota = async function(casoId, btnElement) {
     }
 }
 
-window.toggleNotaImportante = function(btnElement, containerId) {
-    const container = document.getElementById(containerId);
+window.toggleNotaImportante = function(btnElement) {
+    const container = document.getElementById('garcia-notes-input');
     const curr = container.dataset.important === 'true';
     container.dataset.important = (!curr).toString();
     
@@ -444,7 +685,7 @@ window.toggleNotaImportante = function(btnElement, containerId) {
 // 5. ESTIMACIÓN VISA BULLETIN
 // ==========================================
 async function calculateTimeline(caso) {
-    const container = document.getElementById(`dynamic-${caso.id}-timeline`);
+    const container = document.getElementById(`garcia-timeline`);
     if(!container) return;
     
     if(!caso.priority_date) {
@@ -463,12 +704,13 @@ async function calculateTimeline(caso) {
         
         const bulletin = bulletins[0];
         
+        // Agergar logica de Retroceso ("Over estimated time") si la BD tuviese un campo 'retroceso' o al comparar meses pasados.
+        // Simularemos esta logica para el UI con un check basico en FAD vs mes actual si quisieramos, o checkenado flag hardcodeado
+        
         const pd = new Date(caso.priority_date);
         const fad = new Date(bulletin.final_action_date);
         
         // Dif en meses (aproximada) 
-        // Si fad >= pd, ya es corriente.
-        // Si no, calcular diff. 
         let mesesFaltantes = (pd.getFullYear() - fad.getFullYear()) * 12;
         mesesFaltantes -= fad.getMonth();
         mesesFaltantes += pd.getMonth();
@@ -477,7 +719,17 @@ async function calculateTimeline(caso) {
         let pdDisplay = pd.toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric'}).toUpperCase();
         let fadDisplay = fad.toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric'}).toUpperCase();
         
-        if (mesesFaltantes <= 0) {
+        // ALERTA DE RETROCESO
+        // Hardcoded simulation: si fad es del 2021 o anterior (en este repo), lo marcamos como retroceso
+        const isRetroceso = fad.getFullYear() < 2022; 
+        
+        if (isRetroceso) {
+            estimacionHtml = `
+              <div style="font-size:16px;font-family:'DM Mono',monospace;color:var(--danger);animation:pulse 2s infinite">
+                 ⚠ OVER ESTIMATED TIME
+                 <div style="font-size:10px;color:var(--muted)">Retroceso de FAD</div>
+              </div>`;
+        } else if (mesesFaltantes <= 0) {
             estimacionHtml = `<div style="font-size:16px;font-family:'DM Mono',monospace;color:var(--success)">CORRIENTE</div>`;
         } else {
             estimacionHtml = `<div style="font-size:16px;font-family:'DM Mono',monospace;color:var(--accent)">~${mesesFaltantes} meses</div>`;
@@ -485,13 +737,16 @@ async function calculateTimeline(caso) {
         
         // Progreso bar heurístico simple
         let pctVis = 100;
-        if(mesesFaltantes > 0) {
-            // Asumimos un max de 120 meses (10 años) para capar el visual
+        let barColor = 'var(--accent)';
+        if(isRetroceso) {
+            pctVis = 100;
+            barColor = 'var(--danger)';
+        } else if(mesesFaltantes > 0) {
             pctVis = Math.max(5, 100 - ((mesesFaltantes / 120) * 100));
         }
 
-        html = `
-        <div class="bulletin-case">
+        let html = `
+        <div class="bulletin-case" style="${isRetroceso ? 'border-color:rgba(239,68,68,0.3)' : ''}">
             <div class="bulletin-case-title">Categoría: ${caso.tipo_tramite}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:14px">
               <div>
@@ -503,17 +758,13 @@ async function calculateTimeline(caso) {
                 <div style="font-size:16px;font-family:'DM Mono',monospace;color:var(--text)">${fadDisplay}</div>
               </div>
               <div>
-                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Estimado disponible</div>
+                <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Estado/Estimado</div>
                 ${estimacionHtml}
               </div>
             </div>
             
             <div class="progress-bar" style="height:8px;border-radius:4px">
-              <div class="progress-fill" style="width:${pctVis}%;background:var(--accent)"></div>
-            </div>
-            
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">
-                Calculado contra el boletín de ${new Date(bulletin.mes_boletin).toLocaleDateString('es-ES', {month:'long', year:'numeric'})}.
+              <div class="progress-fill" style="width:${pctVis}%;background:${barColor}"></div>
             </div>
         </div>
         `;
@@ -526,60 +777,22 @@ async function calculateTimeline(caso) {
 }
 
 // ==========================================
-// RENDERIZADO DEL PANEL MAESTRO DINÁMICO
+// COMPATIBILIDAD UI
 // ==========================================
-function renderCasePanel(caso) {
-    let panelHtml = `
-    <div class="detail-panel" id="panel-dynamic-${caso.id}">
-      <div class="panel-header">
-        <div>
-          <div class="panel-name">${caso.nombre_cliente}</div>
-          <div class="panel-meta">#${caso.numero_caso} · ${caso.tipo_tramite} · Abierto ${new Date(caso.fecha_apertura).toLocaleDateString()}</div>
-        </div>
-        <button class="close-btn" onclick="closeCase('dynamic-${caso.id}')">✕</button>
-      </div>
-
-      <div class="panel-tabs">
-        <div class="tab active" onclick="switchTab(this,'dynamic-${caso.id}','docs')">📄 Documentos</div>
-        <div class="tab" onclick="switchTab(this,'dynamic-${caso.id}','notes')">💬 Notas</div>
-        <div class="tab" onclick="switchTab(this,'dynamic-${caso.id}','timeline')">⏱ Bulletin / Estimado</div>
-      </div>
-
-      <div class="panel-body">
-        <!-- DOCS TAB -->
-        <div class="tab-content active" id="dynamic-${caso.id}-docs">
-            Cargando documentos...
-        </div>
-
-        <!-- NOTES TAB -->
-        <div class="tab-content" id="dynamic-${caso.id}-notes">
-            <div id="dynamic-${caso.id}-notes-list" style="margin-bottom: 20px;">Cargando notas...</div>
-            
-            <div class="note-input-area" id="dynamic-${caso.id}-notes-input" data-important="false">
-                <textarea class="note-textarea" placeholder="Agregar nota..."></textarea>
-                <div style="display:flex;gap:8px;margin-top:8px">
-                  <button class="btn btn-primary" style="font-size:12px;padding:7px 14px" onclick="guardarNota('${caso.id}', this)">Guardar nota</button>
-                  <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="toggleNotaImportante(this, 'dynamic-${caso.id}-notes-input')">⚠ Marcar importante</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- TIMELINE TAB -->
-        <div class="tab-content" id="dynamic-${caso.id}-timeline">
-            Cargando estimación Visa Bulletin...
-        </div>
-      </div>
-    </div>
-    `;
+window.switchTab = function(el, panelPrefix, tabId) {
+    const targId = (tabId === 'forms') ? 'panel-forms' : `garcia-${tabId}`;
+    let domTarg = document.getElementById(targId);
+    if(!domTarg && tabId==='timeline') domTarg = document.getElementById('garcia-timeline');
     
-    // Inyectarlo en la vista si no existe, o reemplazarlo
-    let container = document.getElementById(`panel-dynamic-${caso.id}`);
-    const contentArea = document.querySelector('.content');
+    const panel = el.closest('.detail-panel') || document.getElementById('panel-garcia');
+    if(!panel) return;
+
+    panel.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    panel.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
     
-    if(container) {
-        container.outerHTML = panelHtml;
-    } else {
-        // Añadirlo al final
-        contentArea.insertAdjacentHTML('beforeend', panelHtml);
-    }
+    el.classList.add('active');
+    if(domTarg) domTarg.classList.add('active');
 }
+
+window.openCase = function() {} // Deprecated
+window.closeCase = function() {} // Deprecated
