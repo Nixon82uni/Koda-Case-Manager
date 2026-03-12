@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Antigravity — Case Tracker</title>
+<title>Koda — Case Manager</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -677,19 +677,19 @@
 <!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="logo">
-    <div class="logo-text">Antigravity</div>
-    <div class="logo-sub">Case Tracker</div>
+    <div class="logo-text">Koda</div>
+    <div class="logo-sub">Case Manager</div>
   </div>
 
   <div class="nav-section">
     <div class="nav-label">Principal</div>
     <div class="nav-item active" onclick="setNav(this)">
       <span class="nav-icon">◈</span> Dashboard
-      <span class="nav-badge">12</span>
+      <span class="nav-badge" id="nav-badge-dashboard">-</span>
     </div>
     <div class="nav-item" onclick="setNav(this)">
       <span class="nav-icon">◎</span> Mis Casos
-      <span class="nav-badge">8</span>
+      <span class="nav-badge" id="nav-badge-miscasos">-</span>
     </div>
     <div class="nav-item" onclick="setNav(this)">
       <span class="nav-icon">◇</span> Todos los Casos
@@ -739,23 +739,23 @@
     <div class="stats-row">
       <div class="stat-card">
         <div class="stat-label">Casos Activos</div>
-        <div class="stat-value">24</div>
-        <div class="stat-delta up">↑ 3 este mes</div>
+        <div class="stat-value" id="stat-casos-activos">-</div>
+        <div class="stat-delta up" id="stat-casos-delta">Calculando...</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Docs Pendientes</div>
-        <div class="stat-value">37</div>
-        <div class="stat-delta warn">⚠ 8 urgentes</div>
+        <div class="stat-value" id="stat-docs-pend">-</div>
+        <div class="stat-delta warn" id="stat-docs-urgentes">Calculando...</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Formularios en Progreso</div>
-        <div class="stat-value">11</div>
-        <div class="stat-delta">de 24 casos</div>
+        <div class="stat-label">Progreso Global</div>
+        <div class="stat-value" id="stat-progreso-global">-%</div>
+        <div class="stat-delta" id="stat-progreso-txt">Documentos recibidos vs total</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Aprobados (YTD)</div>
-        <div class="stat-value">41</div>
-        <div class="stat-delta up">↑ 12% vs año anterior</div>
+        <div class="stat-label">Aprobados</div>
+        <div class="stat-value" id="stat-aprobados">-</div>
+        <div class="stat-delta up" id="stat-aprobados-txt">Histórico total</div>
       </div>
     </div>
 

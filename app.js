@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         console.log("Supabase inicializado correctamente desde variables de entorno.");
         await loadDashboardCases();
+        await updateGlobalStats(); // Cargar estadísticas de arriba
     } catch(err) {
         console.error("Fallo al inicializar Supabase. Revisa tus credenciales.", err);
     }
@@ -109,19 +110,91 @@ window.filterCases = function(el, type) {
     document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
     
-    // Mapear el type del html con el valor de bd si es necesario
     let bdType = type;
     if(type === 'family') bdType = 'Family';
     if(type === 'employment') bdType = 'Employment';
     if(type === 'daca') bdType = 'DACA';
     if(type === 'tps') bdType = 'TPS';
 
-    if(!supabase) {
-        // Mock fallback
-        return;
-    }
+    if(!supabase) return;
     
     loadDashboardCases(type === 'all' ? 'all' : bdType);
+}
+
+// ==========================================
+// 1.5 ESTADÍSTICAS GLOBALES
+// ==========================================
+async function updateGlobalStats() {
+    if(!supabase) return;
+    
+    try {
+        // 1. Casos Activos y Aprobados (Asumimos "Completado" o "Cerrado" como aprobado, o todos los no-cerrados como activos)
+        // Para este prototipo, contaremos todos como activos, excepto los que tengan un estado específico.
+        const { data: todosLosCasos, error: errCasos } = await supabase.from('casos').select('id, estado');
+        if(errCasos) throw errCasos;
+        
+        const casosActivos = todosLosCasos.filter(c => c.estado !== 'Cerrado' && c.estado !== 'Completado');
+        const casosAprobados = todosLosCasos.filter(c => c.estado === 'Completado' || c.estado === 'Aprobado');
+        
+        const activelCount = casosActivos.length;
+        const approvedCount = casosAprobados.length;
+        
+        // 2. Documentos Pendientes y Urgentes
+        const { data: todosLosDocs, error: errDocs } = await supabase.from('documentos_koda').select('estado');
+        if(errDocs) throw errDocs;
+        
+        const docsPendientes = todosLosDocs.filter(d => d.estado !== 'Recibido');
+        const docsUrgentes = docsPendientes.filter(d => d.estado === 'Urgente');
+        const docsRecibidos = todosLosDocs.filter(d => d.estado === 'Recibido');
+        
+        // 3. Progreso Global
+        let pctGlobal = 0;
+        if(todosLosDocs.length > 0) {
+            pctGlobal = Math.round((docsRecibidos.length / todosLosDocs.length) * 100);
+        }
+        
+        // DOM Updates
+        
+        // Sidebar Badges
+        const badgeDashboard = document.getElementById('nav-badge-dashboard');
+        const badgeMisCasos = document.getElementById('nav-badge-miscasos');
+        
+        if(badgeDashboard) badgeDashboard.textContent = todosLosCasos.length.toString();
+        // Asumiendo que "Mis Casos" es una fracción simulada si no hay paralegal en sesión (simulamos 30% asignados)
+        if(badgeMisCasos) badgeMisCasos.textContent = Math.max(1, Math.floor(todosLosCasos.length * 0.3)).toString();
+        
+        // Top Stats
+        const statCasos = document.getElementById('stat-casos-activos');
+        const statCasosDelta = document.getElementById('stat-casos-delta');
+        
+        const statDocs = document.getElementById('stat-docs-pend');
+        const statDocsDelta = document.getElementById('stat-docs-urgentes');
+        
+        const statProg = document.getElementById('stat-progreso-global');
+        const statProgDelta = document.getElementById('stat-progreso-txt');
+        
+        const statApr = document.getElementById('stat-aprobados');
+        
+        if(statCasos) statCasos.textContent = activelCount.toString();
+        if(statCasosDelta) {
+            statCasosDelta.textContent = `↑ ${activelCount > 0 ? 1 : 0} nuevos`; 
+            statCasosDelta.className = 'stat-delta up';
+        }
+        
+        if(statDocs) statDocs.textContent = docsPendientes.length.toString();
+        if(statDocsDelta) {
+            statDocsDelta.textContent = docsUrgentes.length > 0 ? `⚠ ${docsUrgentes.length} urgentes` : 'Todo normal';
+            statDocsDelta.className = docsUrgentes.length > 0 ? 'stat-delta warn' : 'stat-delta up';
+        }
+        
+        if(statProg) statProg.textContent = `${pctGlobal}%`;
+        if(statProgDelta) statProgDelta.textContent = `De ${todosLosDocs.length} documentos totales`;
+        
+        if(statApr) statApr.textContent = approvedCount.toString();
+        
+    } catch(err) {
+        console.error("Error cargando estadísticas", err);
+    }
 }
 
 // ==========================================
@@ -240,6 +313,9 @@ window.toggleDocAction = async function(docId, setRecibido, casoId) {
         
         // Actualizar barra de progreso del registro en el dashboard
         updateCaseProgressRow(casoId);
+        
+        // Actualizar estadísticas globales
+        updateGlobalStats();
         
     } catch(e) {
         console.error("Error toggle doc", e);
