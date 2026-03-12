@@ -759,30 +759,8 @@
       </div>
     </div>
 
-    <!-- BULLETIN BANNER -->
-    <div class="bulletin-banner">
-      <div>
-        <div class="bulletin-title">⊕ Visa Bulletin — Marzo 2025</div>
-        <div class="bulletin-text">
-          <strong>F2A (Cónyuge de Residente Permanente)</strong> avanzó <strong>3 semanas</strong> este mes.
-          Tienes <strong>4 clientes</strong> en esta categoría.
-        </div>
-      </div>
-      <div class="bulletin-dates">
-        <div class="bdate">
-          <div class="bdate-label">Final Action</div>
-          <div class="bdate-val">01 JUL 2022</div>
-        </div>
-        <div class="bdate">
-          <div class="bdate-label">Dates for Filing</div>
-          <div class="bdate-val">15 ENE 2023</div>
-        </div>
-        <div class="bdate">
-          <div class="bdate-label">Mes Anterior</div>
-          <div class="bdate-val">10 JUN 2022</div>
-        </div>
-      </div>
-    </div>
+    <!-- BULLETIN BANNER - FUTURA ITERACION DINAMICA -->
+    <div id="bulletin-banner-container"></div>
 
     <!-- CASES TABLE -->
     <div class="section-header">
@@ -808,94 +786,9 @@
       </div>
 
       <!-- ROWS -->
-      <div class="case-row" onclick="openCase('garcia')">
-        <div>
-          <div class="client-name">García, Roberto</div>
-          <div class="client-sub">#2024-0891 · I-485 / I-130</div>
-        </div>
-        <div><span class="case-type-badge badge-family">Family F2A</span></div>
-        <div><span class="status-dot"><span class="dot dot-yellow"></span>En proceso</span></div>
-        <div class="progress-cell">
-          <div class="prog-label">Docs: 6/9 · Forms: 70%</div>
-          <div class="progress-bar"><div class="progress-fill" style="width:70%;background:var(--accent)"></div></div>
-        </div>
-        <div>
-          <div class="paralegal-avatar-sm" style="background:linear-gradient(135deg,#b8f060,#60d4f0)">ML</div>
-        </div>
-        <div style="font-size:11.5px;color:var(--muted)">Hace 2 días</div>
-        <div><button class="action-btn" onclick="event.stopPropagation();openCase('garcia')">Ver →</button></div>
-      </div>
-
-      <div class="case-row" onclick="openCase('martinez')">
-        <div>
-          <div class="client-name">Martínez, Ana</div>
-          <div class="client-sub">#2024-0876 · DACA Renewal</div>
-        </div>
-        <div><span class="case-type-badge badge-daca">DACA</span></div>
-        <div><span class="status-dot"><span class="dot dot-red"></span>Urgente</span></div>
-        <div class="progress-cell">
-          <div class="prog-label">Docs: 3/5 · Forms: 40%</div>
-          <div class="progress-bar"><div class="progress-fill" style="width:40%;background:var(--danger)"></div></div>
-        </div>
-        <div>
-          <div class="paralegal-avatar-sm" style="background:linear-gradient(135deg,#f0a060,#f060a0)">RV</div>
-        </div>
-        <div style="font-size:11.5px;color:var(--muted)">Hoy</div>
-        <div><button class="action-btn" onclick="event.stopPropagation();">Ver →</button></div>
-      </div>
-
-      <div class="case-row" onclick="openCase('chen')">
-        <div>
-          <div class="client-name">Chen, Wei</div>
-          <div class="client-sub">#2024-0854 · EB-2 PERM</div>
-        </div>
-        <div><span class="case-type-badge badge-employment">Employment EB-2</span></div>
-        <div><span class="status-dot"><span class="dot dot-green"></span>Al día</span></div>
-        <div class="progress-cell">
-          <div class="prog-label">Docs: 8/8 · Forms: 90%</div>
-          <div class="progress-bar"><div class="progress-fill" style="width:90%;background:var(--success)"></div></div>
-        </div>
-        <div>
-          <div class="paralegal-avatar-sm" style="background:linear-gradient(135deg,#60d4f0,#b8f060)">ML</div>
-        </div>
-        <div style="font-size:11.5px;color:var(--muted)">Ayer</div>
-        <div><button class="action-btn" onclick="event.stopPropagation();">Ver →</button></div>
-      </div>
-
-      <div class="case-row">
-        <div>
-          <div class="client-name">Rodríguez, Carmen</div>
-          <div class="client-sub">#2024-0841 · TPS Honduras</div>
-        </div>
-        <div><span class="case-type-badge badge-tps">TPS</span></div>
-        <div><span class="status-dot"><span class="dot dot-gray"></span>Nuevo</span></div>
-        <div class="progress-cell">
-          <div class="prog-label">Docs: 1/6 · Forms: 0%</div>
-          <div class="progress-bar"><div class="progress-fill" style="width:8%;background:var(--muted)"></div></div>
-        </div>
-        <div>
-          <div class="paralegal-avatar-sm" style="background:linear-gradient(135deg,#f060a0,#f0a060)">JP</div>
-        </div>
-        <div style="font-size:11.5px;color:var(--muted)">4 días</div>
-        <div><button class="action-btn">Ver →</button></div>
-      </div>
-
-      <div class="case-row">
-        <div>
-          <div class="client-name">Okonkwo, James</div>
-          <div class="client-sub">#2024-0830 · I-130 F3</div>
-        </div>
-        <div><span class="case-type-badge badge-family">Family F3</span></div>
-        <div><span class="status-dot"><span class="dot dot-yellow"></span>En proceso</span></div>
-        <div class="progress-cell">
-          <div class="prog-label">Docs: 5/7 · Forms: 55%</div>
-          <div class="progress-bar"><div class="progress-fill" style="width:55%;background:var(--accent3)"></div></div>
-        </div>
-        <div>
-          <div class="paralegal-avatar-sm" style="background:linear-gradient(135deg,#b8f060,#f0a060)">ML</div>
-        </div>
-        <div style="font-size:11.5px;color:var(--muted)">3 días</div>
-        <div><button class="action-btn">Ver →</button></div>
+      <div id="cases-list-container">
+        <!-- Reemplazado dinámicamente por app.js -->
+        <div style="padding:40px; text-align:center; color:var(--muted); font-size:13px;">Cargando casos...</div>
       </div>
     </div>
 
@@ -1011,9 +904,10 @@
       <div id="nc-i485-type-container" style="display:none; margin-bottom:16px;">
         <label style="display:block; font-size:11px; font-family:'DM Mono',monospace; color:var(--muted); margin-bottom:6px;">TIPO DE I-485 (CATEGORÍA)</label>
         <select id="nc-i485-type" style="width:100%; background:var(--surface2); border:1px solid var(--border); padding:10px 12px; border-radius:6px; color:var(--text); font-family:'DM Sans';">
-          <option value="Family-Based">Basado en Familia (Family-Based)</option>
-          <option value="Employment-Based">Basado en Empleo (Employment-Based)</option>
-          <option value="Asylum-Refugee">Basado en Asilo/Refugiado</option>
+          <option value="General">General AOS (Ej. Petición Familiar)</option>
+          <option value="Asylum">Basado en Asilo (Asylum Grant)</option>
+          <option value="VAWA">Basado en VAWA (VAWA Approval)</option>
+          <option value="U-Status">Basado en Visa U (U-Nonimmigrant Status)</option>
         </select>
       </div>
 

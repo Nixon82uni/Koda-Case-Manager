@@ -423,8 +423,10 @@ window.crearCasoSubmit = async function() {
     if(tipo === 'I-485' || tipo === 'I-130-I-485') {
         const i485Type = document.getElementById('nc-i485-type').value;
         dbTipo = tipo === 'I-130-I-485' ? `I-130 + I-485 (${i485Type})` : `I-485 (${i485Type})`;
-        if(i485Type.includes('Employment')) category = 'Employment';
-        if(i485Type.includes('Asylum')) category = 'Asylum';
+        if(i485Type === 'Asylum') category = 'Asylum';
+        else if (i485Type === 'VAWA') category = 'VAWA';
+        else if (i485Type === 'U-Status') category = 'U-Status';
+        // "General" se queda como Family por defecto de arriba
     } else {
         category = (tipo==='N-400') ? 'Citizenship' : ((tipo==='I-821D'||tipo==='TPS') ? 'DACA/TPS' : 'Family');
     }
@@ -451,8 +453,14 @@ window.crearCasoSubmit = async function() {
         if(error) throw error;
         
         // Autollenar la(s) plantilla(s) de documentos
+        const i485Type = document.getElementById('nc-i485-type').value;
         let tiposParaPlantilla = [tipo];
-        if(tipo === 'I-130-I-485') tiposParaPlantilla = ['I-130', 'I-485'];
+        
+        if(tipo === 'I-130-I-485') {
+            tiposParaPlantilla = ['I-130', `I-485 (${i485Type})`];
+        } else if (tipo === 'I-485') {
+            tiposParaPlantilla = [`I-485 (${i485Type})`];
+        }
         
         await autoFillDocuments(newCase.id, tiposParaPlantilla);
         
