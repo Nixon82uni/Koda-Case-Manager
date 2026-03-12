@@ -230,9 +230,9 @@ async function updateGlobalStats() {
             const { data: todosLosDocs, error: errDocs } = await supabase.from('documentos_koda').select('estado').in('caso_id', targetCasoIds);
             if(errDocs) throw errDocs;
             
-            docsPendientes = todosLosDocs.filter(d => d.estado !== 'Recibido');
+            docsPendientes = todosLosDocs.filter(d => d.estado !== 'Aprobado');
             docsUrgentes = docsPendientes.filter(d => d.estado === 'Urgente');
-            docsRecibidos = todosLosDocs.filter(d => d.estado === 'Recibido');
+            docsRecibidos = todosLosDocs.filter(d => d.estado === 'Aprobado');
             todosLosDocsLength = todosLosDocs.length;
         }
         
@@ -464,28 +464,31 @@ async function loadCaseDocuments(casoId) {
     
     let html = '';
     docs.forEach(doc => {
-        const isRecibido = doc.estado === 'Recibido';
+        const isRecibido = doc.estado === 'Aprobado';
         const isTraduccion = doc.estado === 'Necesita Traducción';
         const isUrgente = doc.estado === 'Urgente'; // Legacy
         
         let statusColor = 'var(--muted)';
         let statusText = '⏳ Pendiente';
         
-        if(isRecibido) { statusColor = 'var(--success)'; statusText = '✓ Recibido'; }
+        if(isRecibido) { statusColor = 'var(--success)'; statusText = '✓ Aprobado'; }
         else if(isTraduccion) { statusColor = 'var(--accent3)'; statusText = '⚖ Requiere Traducción'; }
         else if(isUrgente) { statusColor = 'var(--danger)'; statusText = '✕ Urgente'; }
         
-        const dropboxIconStyle = doc.link_dropbox ? 'opacity:1;color:var(--accent)' : 'opacity:0.3;color:var(--muted)';
-        const dropboxHref = doc.link_dropbox ? doc.link_dropbox : '#';
+        let linkHtml = '';
+        if(doc.link_dropbox) {
+             linkHtml = `<a href="${doc.link_dropbox}" target="_blank" class="btn btn-ghost" style="padding:4px 8px; font-size:11px; margin-right:8px;" onclick="event.stopPropagation();">Abrir Archivo ↗</a>
+                         <button style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:12px; margin-right:8px;" onclick="event.stopPropagation(); promptDropboxLink('${doc.id}', '${doc.link_dropbox}', '${casoId}')">✎</button>`;
+        } else {
+             linkHtml = `<button class="btn btn-ghost" style="padding:4px 8px; font-size:11px; color:var(--muted); margin-right:8px;" onclick="event.stopPropagation(); promptDropboxLink('${doc.id}', '', '${casoId}')">🔗 Agregar Dropbox</button>`;
+        }
         
         html += `
         <div class="doc-item" onclick="toggleDocAction('${doc.id}', '${doc.estado}', '${casoId}')">
             <div class="doc-checkbox ${isRecibido ? 'checked' : ''}">${isRecibido ? '✓' : ''}</div>
-            <div class="doc-name ${isRecibido ? 'checked' : ''}">${doc.nombre_documento}</div>
-            <a href="${dropboxHref}" target="${doc.link_dropbox ? '_blank' : '_self'}" class="dropbox-link" onclick="event.stopPropagation(); promptDropboxLink('${doc.id}', '${doc.link_dropbox || ''}', '${casoId}')" title="Vincular/Abrir Dropbox" style="${dropboxIconStyle}">
-              <span style="font-size:14px;">⎘</span>
-            </a>
-            <span class="doc-status" style="color:${statusColor}">${statusText}</span>
+            <div class="doc-name ${isRecibido ? 'checked' : ''}" style="flex:1;">${doc.nombre_documento}</div>
+            ${linkHtml}
+            <span class="doc-status" style="color:${statusColor}; min-width:80px; text-align:right;">${statusText}</span>
         </div>
         `;
     });
@@ -496,8 +499,8 @@ async function loadCaseDocuments(casoId) {
 window.toggleDocAction = async function(docId, estadoActual, casoId) {
     let nuevoEstado = 'Pendiente';
     if(estadoActual === 'Pendiente' || estadoActual === 'Urgente') nuevoEstado = 'Necesita Traducción';
-    else if(estadoActual === 'Necesita Traducción') nuevoEstado = 'Recibido';
-    else if(estadoActual === 'Recibido') nuevoEstado = 'Pendiente';
+    else if(estadoActual === 'Necesita Traducción') nuevoEstado = 'Aprobado';
+    else if(estadoActual === 'Aprobado') nuevoEstado = 'Pendiente';
     
     try {
         await supabase.from('documentos_koda').update({ estado: nuevoEstado }).eq('id', docId);
@@ -580,7 +583,7 @@ async function updateCaseProgressRow(casoId) {
         if(!docs || docs.length === 0) return;
         
         const total = docs.length;
-        const recibidos = docs.filter(d => d.estado === 'Recibido').length;
+        const recibidos = docs.filter(d => d.estado === 'Aprobado').length;
         const pct = Math.round((recibidos/total) * 100);
         
         // Intentar encontrar la barra en el DOM para actualizarla dinámicamente
