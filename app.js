@@ -392,19 +392,43 @@ window.cerrarModalNuevoCaso = function() {
     document.getElementById('modal-nuevo-caso').style.display = 'none';
     document.getElementById('nc-nombre').value = '';
     document.getElementById('nc-priority').value = '';
+    document.getElementById('nc-tipo').value = 'I-130';
+    document.getElementById('nc-i485-type-container').style.display = 'none';
+}
+
+window.handleTipoTramiteChange = function(val) {
+    const container = document.getElementById('nc-i485-type-container');
+    if(val === 'I-485' || val === 'I-130-I-485') {
+        container.style.display = 'block';
+    } else {
+        container.style.display = 'none';
+    }
 }
 
 window.crearCasoSubmit = async function() {
     if(!supabase) return alert("Supabase no configurado");
     
     const nombre = document.getElementById('nc-nombre').value.trim();
-    const tipo = document.getElementById('nc-tipo').value;
+    let tipo = document.getElementById('nc-tipo').value;
     const paralegal = document.getElementById('nc-paralegal').value;
     const priority = document.getElementById('nc-priority').value;
     const btn = document.getElementById('btn-crear-caso');
     
     if(!nombre) return alert("El nombre es requerido");
     
+    // Si incluye I-485, adjuntamos su especificador al String de base de datos
+    let dbTipo = tipo;
+    let category = 'Family';
+    
+    if(tipo === 'I-485' || tipo === 'I-130-I-485') {
+        const i485Type = document.getElementById('nc-i485-type').value;
+        dbTipo = tipo === 'I-130-I-485' ? `I-130 + I-485 (${i485Type})` : `I-485 (${i485Type})`;
+        if(i485Type.includes('Employment')) category = 'Employment';
+        if(i485Type.includes('Asylum')) category = 'Asylum';
+    } else {
+        category = (tipo==='N-400') ? 'Citizenship' : ((tipo==='I-821D'||tipo==='TPS') ? 'DACA/TPS' : 'Family');
+    }
+
     // Auto generar un número de caso KODA-202X
     const year = new Date().getFullYear();
     const randomHex = Math.floor(Math.random()*16777215).toString(16).toUpperCase().padStart(4, '0');
@@ -417,8 +441,8 @@ window.crearCasoSubmit = async function() {
         const { data: newCase, error } = await supabase.from('casos').insert({
             nombre_cliente: nombre,
             numero_caso: numCaso,
-            tipo_tramite: tipo,
-            categoria_tramite: (tipo==='F2A'||tipo==='I-130'||tipo==='I-485')?'Family' : (tipo==='EB-2'?'Employment':tipo),
+            tipo_tramite: dbTipo,
+            categoria_tramite: category,
             estado: 'Nuevo',
             priority_date: priority || null,
             paralegal_asignado: paralegal
@@ -426,8 +450,11 @@ window.crearCasoSubmit = async function() {
         
         if(error) throw error;
         
-        // Autollenar la plantilla de documentos
-        await autoFillDocuments(newCase.id, tipo);
+        // Autollenar la(s) plantilla(s) de documentos
+        let tiposParaPlantilla = [tipo];
+        if(tipo === 'I-130-I-485') tiposParaPlantilla = ['I-130', 'I-485'];
+        
+        await autoFillDocuments(newCase.id, tiposParaPlantilla);
         
         cerrarModalNuevoCaso();
         await loadDashboardCases(currentCategoryFilter);
@@ -448,20 +475,23 @@ window.crearCasoSubmit = async function() {
 // AUTO-LLENADO DE PLANTILLAS 
 // (Se llamaría al crear un nuevo caso)
 // ==========================================
-async function autoFillDocuments(casoId, tipoTramite) {
+async function autoFillDocuments(casoId, tiposTramiteArray) {
     try {
-        // Buscar plantilla
-        const { data: docs } = await supabase.from('plantillas_documentos').select('*').eq('tipo_tramite', tipoTramite);
-        
-        if(docs && docs.length > 0) {
-            const inserts = docs.map(d => ({
-                caso_id: casoId,
-                nombre_documento: d.nombre_documento,
-                orden: d.orden
-            }));
+        const insertPromises = tiposTramiteArray.map(async (tipo) => {
+            const { data: docs } = await supabase.from('plantillas_documentos').select('*').eq('tipo_tramite', tipo);
             
-            await supabase.from('documentos_koda').insert(inserts);
-        }
+            if(docs && docs.length > 0) {
+                const prefix = tiposTramiteArray.length > 1 ? `[${tipo}] ` : '';
+                const inserts = docs.map(d => ({
+                    caso_id: casoId,
+                    nombre_documento: prefix + d.nombre_documento,
+                    orden: d.orden
+                }));
+                await supabase.from('documentos_koda').insert(inserts);
+            }
+        });
+        
+        await Promise.all(insertPromises);
     } catch(e) {
         console.error("Error autollenando plantilla", e);
     }

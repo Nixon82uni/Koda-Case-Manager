@@ -987,14 +987,15 @@
       <div style="margin-bottom:16px; display:grid; grid-template-columns:1fr 1fr; gap:16px;">
         <div>
           <label style="display:block; font-size:11px; font-family:'DM Mono',monospace; color:var(--muted); margin-bottom:6px;">TIPO DE TRÁMITE</label>
-          <select id="nc-tipo" style="width:100%; background:var(--surface2); border:1px solid var(--border); padding:10px 12px; border-radius:6px; color:var(--text); font-family:'DM Sans';">
-            <option value="F2A">F2A (Family-based)</option>
-            <option value="DACA">DACA</option>
-            <option value="EB-2">EB-2 (Employment)</option>
-            <option value="TPS">TPS</option>
-            <option value="I-130">I-130 Solo</option>
-            <option value="I-485">I-485 Solo</option>
-            <option value="N-400">N-400 (Citizenship)</option>
+          <select id="nc-tipo" style="width:100%; background:var(--surface2); border:1px solid var(--border); padding:10px 12px; border-radius:6px; color:var(--text); font-family:'DM Sans';" onchange="handleTipoTramiteChange(this.value)">
+            <option value="I-130">I-130 (Petición Familiar Solo)</option>
+            <option value="I-130-I-485">I-130 + I-485 (Combo Ajuste de Estatus)</option>
+            <option value="I-485">I-485 (Ajuste de Estatus Solo)</option>
+            <option value="N-400">N-400 (Naturalización)</option>
+            <option value="I-821D">I-821D (DACA)</option>
+            <option value="I-751">I-751 (Remoción de Condiciones)</option>
+            <option value="I-765">I-765 (Bona Fide)</option>
+            <option value="I-360">I-360 (VAWA)</option>
           </select>
         </div>
         <div>
@@ -1005,6 +1006,15 @@
             <option value="JP">JP - Juan P.</option>
           </select>
         </div>
+      </div>
+
+      <div id="nc-i485-type-container" style="display:none; margin-bottom:16px;">
+        <label style="display:block; font-size:11px; font-family:'DM Mono',monospace; color:var(--muted); margin-bottom:6px;">TIPO DE I-485 (CATEGORÍA)</label>
+        <select id="nc-i485-type" style="width:100%; background:var(--surface2); border:1px solid var(--border); padding:10px 12px; border-radius:6px; color:var(--text); font-family:'DM Sans';">
+          <option value="Family-Based">Basado en Familia (Family-Based)</option>
+          <option value="Employment-Based">Basado en Empleo (Employment-Based)</option>
+          <option value="Asylum-Refugee">Basado en Asilo/Refugiado</option>
+        </select>
       </div>
 
       <div style="margin-bottom:24px;">
