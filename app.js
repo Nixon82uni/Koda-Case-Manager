@@ -360,6 +360,27 @@ window.guardarReceiptNumber = async function() {
     }
 }
 
+window.eliminarCasoActual = async function() {
+    if(!currentActiveCaseId || !supabase) return;
+    
+    if(!confirm("¿Está seguro que desea eliminar este expediente y todos sus documentos relacionados? Esta acción no se puede deshacer.")) {
+        return;
+    }
+    
+    try {
+        const { error } = await supabase.from('casos').delete().eq('id', currentActiveCaseId);
+        if(error) throw error;
+        
+        alert("Expediente eliminado correctamente.");
+        window.closeCaseDetail();
+        loadDashboardCases(currentCategoryFilter, false); 
+        updateGlobalStats();
+    } catch(err) {
+        console.error("Error eliminando caso", err);
+        alert("Ocurrió un error al intentar eliminar el expediente.");
+    }
+}
+
 // ==========================================
 // CREADOR DE CASOS (MODAL)
 // ==========================================
